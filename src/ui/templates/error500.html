@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    📌 500 - Internal Server Error Template
+    ==========================================
+    This page is displayed when an internal server error occurs.
+
+    🔹 Features:
+    - Displays a clear "500 Internal Server Error" message.
+    - Provides a link to return to the homepage.
+    - Includes standard layout styles and reusable components.
+
+    🔹 Best Practices:
+    - Uses semantic HTML for accessibility.
+    - Implements a modular layout with reusable header and footer components.
+    - Fully responsive and mobile-friendly.
+
+    ⏳ Last Updated: 2025-02-23
+  -->
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Server Error - 3AI Dashboard</title>
+
+  <!-- Critical CSS inlined for error page -->
+  <style>
+    /* Minimal styles needed for error page */
+    :root {
+      --primary: #2563eb;
+      --error: #ef4444;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 32rem;
+      margin: 0 auto;
+      padding: 4rem 1rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-outline {
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .text-muted {
+      color: var(--text-muted);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --surface: #0f172a;
+        --border: #334155;
+      }
+      body {
+        background: var(--surface);
+      }
+    }
+  </style>
+
+  <!-- Preconnect to status page -->
+  <link rel="preconnect" href="https://status.3ai.com">
+</head>
+<body>
+
+  <!-- 🔹 Include the navigation/header component -->
+  {% include 'partials/header.html' %}
+
+  <main class="container" role="main">
+    <div class="text-center">
+      <!-- Error Illustration -->
+      <svg 
+        class="w-24 h-24 mx-auto mb-8" 
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        style="color: var(--error)"
+      >
+        <path 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          stroke-width="1.5"
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+        />
+      </svg>
+
+      <!-- Error Message -->
+      <h1 style="font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem;">
+        500: Server Error
+      </h1>
+      <p style="font-size: 1.125rem; color: var(--text-muted); margin-bottom: 2rem;">
+        We're experiencing some technical difficulties. Our team has been notified and is working on a fix.
+      </p>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem;">
+        <button 
+          onclick="window.location.reload()"
+          class="btn btn-primary"
+        >
+          Try Again
+        </button>
+        <a 
+          href="https://status.3ai.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-outline"
+        >
+          Check Status Page
+        </a>
+      </div>
+
+      <!-- Error Details (for logged-in admins) -->
+      {% if is_admin %}
+      <div 
+        style="text-align: left; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem;"
+      >
+        <h2 style="font-size: 1rem; margin-top: 0;">Error Details</h2>
+        <pre style="overflow-x: auto; font-size: 0.875rem;">
+          <code>{{ error_details }}</code>
+        </pre>
+      </div>
+      {% endif %}
+
+      <!-- Support Information -->
+      <div class="text-muted" style="font-size: 0.875rem;">
+        <p>If the problem persists, please contact support:</p>
+        <ul style="list-style: none; padding: 0;">
+          <li>Email: <a href="mailto:support@3ai.com" style="color: var(--primary)">support@3ai.com</a></li>
+          <li>Support Hours: 24/7</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+  
+  <!-- 🔹 Footer component -->
+  <footer role="contentinfo">
+    <p>&copy; 2025 3AI. All rights reserved.</p>
+  </footer>
+
+  <!-- Minimal Error Tracking -->
+  <script>
+    // Log error to our analytics
+    const logError = () => {
+      const errorData = {
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        referrer: document.referrer,
+        errorId: '{{ error_id }}' // From server
+      };
+
+      // Attempt to send error data
+      fetch('/api/log-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(errorData),
+        // Use keepalive to ensure the request completes
+        keepalive: true
+      }).catch(() => {
+        // Fallback to storing locally if request fails
+        const errors = JSON.parse(localStorage.getItem('errorLog') || '[]');
+        errors.push(errorData);
+        localStorage.setItem('errorLog', JSON.stringify(errors));
+      });
+    };
+
+    // Log error when page loads
+    window.addEventListener('load', logError);
+
+    // Auto-refresh after 5 minutes if still on error page
+    setTimeout(() => {
+      if (document.visibilityState === 'visible') {
+        window.location.reload();
+      }
+    }, 300000);
+  </script>
+
+</body>
+</html>

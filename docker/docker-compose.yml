@@ -1,0 +1,31 @@
+# docker/docker-compose.yml
+# This docker-compose file defines the multi-container setup for the 3AI application.
+# It configures the main application service along with volume mounts for persistent storage.
+
+services:
+  app:
+    image: agentdock:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      cache_from: 
+        - agentdock:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=src/ui/dashboard.py
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - FLASK_DEBUG=False
+      - LOG_LEVEL=INFO
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      # Mount only specific directories needed for development
+      - ../src/ui/templates:/app/src/ui/templates
+      - ../src/ui/static:/app/src/ui/static
+      - ../logs:/app/logs
+    restart: unless-stopped

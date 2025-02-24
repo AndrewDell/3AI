@@ -1,0 +1,36 @@
+@"
+# Virtual Environment
+venv/
+env/
+.env/
+
+# Dependencies
+node_modules/
+
+# Large files and ML libraries
+*.pyd
+*.dll
+*.lib
+tensorflow/
+torch/
+clang/
+
+# Cache
+__pycache__/
+.pytest_cache/
+.coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+"@ | Out-File -FilePath .gitignore -Encoding UTF8

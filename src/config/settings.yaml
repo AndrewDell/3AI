@@ -1,0 +1,26 @@
+# src/config/settings.yaml
+# This file contains general configuration settings for the 3AI platform.
+# Adjust these parameters to customize API keys, agent behavior, logging preferences, and more.
+api:
+  # Google Gemini 2.0 API key for authentication.
+  google_gemini_key: "AIzaSyDYTt1JxARqo1OP3i6Vj1VB64ulU_FRq-E"  # Replace with your actual API key
+
+agent:
+  # Default timeout in seconds for agent tasks.
+  default_timeout: 30
+  # Number of retry attempts for failed tasks.
+  retry_attempts: 3
+
+logging:
+  # Set the logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+  level: INFO
+  # File path where log entries will be written.
+  file: "logs/3ai.log"
+
+database:
+  # Example database connection settings (adjust as necessary).
+  host: "localhost"
+  port: 5432
+  username: "db_user"
+  password: "db_password"  # Use environment variables or secret management for sensitive data.
+  name: "3ai_db"
