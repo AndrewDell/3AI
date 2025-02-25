@@ -8,6 +8,18 @@ import {
   ChannelMetrics
 } from '@/types/agents';
 
+/**
+ * MarketingAgent class responsible for automating marketing activities,
+ * campaign management, and channel performance tracking.
+ * 
+ * Key responsibilities:
+ * - Track and optimize multi-channel marketing campaigns
+ * - Monitor audience engagement and conversion metrics
+ * - Generate marketing-qualified leads
+ * - Calculate ROI across marketing channels
+ * 
+ * @extends EventEmitter - Enables event-based communication with the agent manager
+ */
 export class MarketingAgent extends EventEmitter {
   private status: AgentStatus = 'idle';
   private metrics: MarketingMetrics;
@@ -15,6 +27,15 @@ export class MarketingAgent extends EventEmitter {
   private taskInterval: NodeJS.Timeout | null = null;
   private campaignInterval: NodeJS.Timeout | null = null;
 
+  /**
+   * Initialize the MarketingAgent with configuration and default metrics
+   * 
+   * @param config - Configuration including:
+   *   - Marketing channels to utilize (email, social, search, etc.)
+   *   - Campaign budget and ROI targets
+   *   - Target audience segments
+   *   - Content strategy settings
+   */
   constructor(config: MarketingAgentConfig) {
     super();
     this.config = config;
@@ -49,29 +70,46 @@ export class MarketingAgent extends EventEmitter {
     };
   }
 
+  /**
+   * Update agent status and emit status change event
+   * @param newStatus - New status to set for the agent
+   */
   private setStatus(newStatus: AgentStatus): void {
     this.status = newStatus;
     this.metrics.status = newStatus;
     this.emitEvent('status_change', { status: newStatus });
   }
 
+  /**
+   * Restart the agent with a brief cooldown period
+   * Used when recovering from errors or applying configuration changes
+   */
   public restart(): void {
     this.stop();
-    setTimeout(() => this.start(), 1000);
+    setTimeout(() => this.start(), 1000); // Brief cooldown before restart
   }
 
+  /**
+   * Start the agent's marketing automation activities
+   * Sets up two main intervals:
+   * 1. Campaign monitoring - Tracks performance metrics across channels
+   * 2. Marketing tasks - Executes content creation, scheduling, and optimization
+   */
   public start(): void {
     if (this.status === 'active') return;
 
     this.setStatus('active');
     
-    // Start campaign monitoring
+    // Start campaign monitoring (every 10 seconds)
     this.campaignInterval = setInterval(() => this.monitorCampaigns(), 10000);
 
-    // Start general marketing activities
+    // Start general marketing activities (every 15 seconds)
     this.taskInterval = setInterval(() => this.processTask(), 15000);
   }
 
+  /**
+   * Stop all agent activities and clear monitoring intervals
+   */
   public stop(): void {
     if (this.status === 'idle') return;
 
@@ -88,8 +126,14 @@ export class MarketingAgent extends EventEmitter {
     }
   }
 
+  /**
+   * Monitor active marketing campaigns across all channels
+   * In a real implementation, this would connect to ad platforms,
+   * email marketing systems, and social media analytics
+   */
   private async monitorCampaigns(): Promise<void> {
     try {
+      // Simulate campaign performance data
       const campaignUpdates = this.simulateCampaignActivity();
       this.updateCampaignMetrics(campaignUpdates);
     } catch (error) {
@@ -97,6 +141,10 @@ export class MarketingAgent extends EventEmitter {
     }
   }
 
+  /**
+   * Generate simulated campaign performance data across configured channels
+   * @returns Object containing channel metrics, spend, and revenue data
+   */
   private simulateCampaignActivity() {
     const baseMultiplier = Math.random();
     
@@ -114,6 +162,16 @@ export class MarketingAgent extends EventEmitter {
     };
   }
 
+  /**
+   * Update marketing metrics based on campaign performance data
+   * Calculates:
+   * - Channel-specific performance (reach, engagement, conversions)
+   * - Overall campaign ROI
+   * - Audience engagement statistics
+   * - Lead generation and conversion rates
+   * 
+   * @param updates - Campaign performance data including channel metrics, spend, and revenue
+   */
   private updateCampaignMetrics(updates: {
     channels: {
       name: string;
@@ -163,13 +221,21 @@ export class MarketingAgent extends EventEmitter {
         (this.metrics.leads_generated / this.metrics.audience_engagement.total_reach) * 100;
     }
 
+    // Emit updated metrics
     this.emitEvent('metrics_update', { metrics: this.metrics });
   }
 
+  /**
+   * Process regular marketing tasks such as content creation, 
+   * social media posting, and campaign optimization
+   * 
+   * Tracks execution time for performance metrics
+   */
   private async processTask(): Promise<void> {
     const startTime = Date.now();
     
     try {
+      // Simulate various marketing activities
       const activities = this.simulateMarketingActivities();
       
       if (activities.success) {
@@ -183,6 +249,12 @@ export class MarketingAgent extends EventEmitter {
     }
   }
 
+  /**
+   * Generate simulated marketing activity data
+   * Models campaign creation, completion, and performance metrics
+   * 
+   * @returns Object containing campaign updates and performance metrics
+   */
   private simulateMarketingActivities(): {
     success: boolean;
     campaignUpdates?: {
@@ -213,6 +285,17 @@ export class MarketingAgent extends EventEmitter {
     return { success: false };
   }
 
+  /**
+   * Update agent metrics based on marketing activities
+   * Tracks:
+   * - Response time performance
+   * - Success rate calculations
+   * - Campaign status updates
+   * - Click-through and bounce rate trends
+   * 
+   * @param startTime - Timestamp when task processing began
+   * @param activities - Marketing activity data including campaign updates
+   */
   private updateMetrics(startTime: number, activities: {
     campaignUpdates?: {
       active: number;
@@ -223,12 +306,12 @@ export class MarketingAgent extends EventEmitter {
       };
     };
   }): void {
-    // Update response time
+    // Update response time using weighted rolling average
     const responseTime = Date.now() - startTime;
     this.metrics.avg_response_time = 
       (this.metrics.avg_response_time * 0.9) + (responseTime * 0.1);
     
-    // Update success rate
+    // Update success rate calculation
     const totalTasks = this.metrics.error_count + 
       (this.metrics.success_rate * 100);
     const successfulTasks = totalTasks - this.metrics.error_count;
@@ -236,12 +319,13 @@ export class MarketingAgent extends EventEmitter {
 
     // Update campaign metrics
     if (activities.campaignUpdates) {
+      // Update active and completed campaign counts
       this.metrics.campaign_metrics.active_campaigns = 
         activities.campaignUpdates.active;
       this.metrics.campaign_metrics.completed_campaigns += 
         activities.campaignUpdates.completed;
 
-      // Update audience engagement metrics
+      // Update audience engagement metrics using weighted rolling average
       this.metrics.audience_engagement.click_through_rate = 
         (this.metrics.audience_engagement.click_through_rate * 0.9) + 
         (activities.campaignUpdates.performance.click_through_rate * 0.1);
@@ -251,47 +335,82 @@ export class MarketingAgent extends EventEmitter {
         (activities.campaignUpdates.performance.bounce_rate * 0.1);
     }
 
+    // Emit updated metrics
     this.emitEvent('metrics_update', { metrics: this.metrics });
   }
 
+  /**
+   * Handle errors that occur during agent operation
+   * Tracks consecutive failures and updates error metrics
+   * 
+   * @param error - The error that occurred
+   */
   private handleError(error: Error): void {
+    // Increment error count and consecutive failures
     this.metrics.error_count++;
     this.metrics.consecutive_failures++;
-
-    if (this.metrics.consecutive_failures >= (this.config.retryAttempts || 3)) {
-      this.setStatus('error');
+    
+    // Log the error
+    console.error(`Marketing agent error: ${error.message}`);
+    
+    // If too many consecutive failures, set the agent to failed state
+    if (this.metrics.consecutive_failures >= 5) {
+      this.setStatus('failed' as AgentStatus);
     }
-
-    this.emitEvent('error', { error: error.message });
   }
 
+  /**
+   * Emit an event with the specified type and data
+   * Used for communication with the agent orchestrator
+   * 
+   * @param type - The type of event to emit
+   * @param data - The event data to include
+   */
   private emitEvent(type: AgentEvent['type'], data: Partial<AgentEvent['data']>): void {
     const event: AgentEvent = {
       type,
-      agentId: this.config.id,
-      data,
-      timestamp: Date.now()
+      data: data
     };
-    this.emit('agent_event', event);
+    this.emit('event', event);
   }
 
+  /**
+   * Get the current agent metrics
+   * @returns The current marketing metrics
+   */
   public getMetrics(): MarketingMetrics {
-    return { ...this.metrics };
+    return this.metrics;
   }
 
+  /**
+   * Get the current agent status
+   * @returns The current agent status
+   */
   public getStatus(): AgentStatus {
     return this.status;
   }
 
+  /**
+   * Get the agent's unique identifier
+   * @returns The agent ID
+   */
   public getId(): string {
     return this.config.id;
   }
 
+  /**
+   * Get the agent's display name
+   * @returns The agent name
+   */
   public getName(): string {
     return this.config.name;
   }
 
+  /**
+   * Get the agent's configuration
+   * @returns The marketing agent configuration
+   */
   public getConfig(): MarketingAgentConfig {
-    return { ...this.config };
+    return this.config;
   }
 } 

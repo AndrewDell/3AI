@@ -115,8 +115,8 @@
 
 **Set Up a Virtual Environment:**
    ```bash
-   python -m venv venv
-   source venv/bin/activate # On Windows: venv\Scripts\activate
+    python -m venv venv
+    source venv/bin/activate # On Windows: venv\Scripts\activate
    ```
 **Install Dependencies:**
    ```bash
@@ -124,8 +124,32 @@
     pip install -r requirements.txt
    ```
 **Set Up Dockers:**
+
+For Linux/MacOS:
    ```bash
-    docker-compose up --build
+   # Navigate to docker directory
+   cd docker
+   
+   # Build with BuildKit enabled (all in one line)
+   DOCKER_BUILDKIT=1 docker-compose build --parallel
+   
+   # Start containers
+   docker-compose up
+   ```
+
+For Windows PowerShell:
+   ```powershell
+   # Navigate to docker directory
+   cd docker
+   
+   # Set BuildKit environment variable
+   $env:DOCKER_BUILDKIT=1
+   
+   # Build containers
+   docker-compose build --parallel
+   
+   # Start containers
+   docker-compose up
    ```
 **Usage**
    ```bash
@@ -257,3 +281,186 @@ cd C:\Users\Andrew\3AI\docker
 # Then set BuildKit and run the build
 $env:DOCKER_BUILDKIT=1
 docker-compose build --parallel
+
+## Agent System Architecture
+
+### Core Components
+
+3AI is structured as a coordinated multi-agent system with:
+
+1. **Agent Orchestrator** - Central controller (`src/core/agent_orchestration.py`)
+   - Manages agent lifecycles (registration, scheduling, monitoring)
+   - Routes tasks between agents using priority queues
+   - Implements circuit breaker pattern for fault tolerance
+   - Maintains health metrics for all agents
+
+2. **Base Agent** - Abstract foundation (`src/core/agent_orchestration.py:BaseAgent`)
+   - Defines common interface for all domain-specific agents
+   - Manages agent state (idle, running, failed, recovering, stopped)
+   - Provides health check mechanism and logging capabilities
+   - Standardizes metrics tracking and error handling
+
+3. **Socket.IO Server** - Real-time communication layer (`src/server/socketServer.ts`)
+   - Provides bidirectional event-based communication
+   - Enables dashboard to receive agent updates in real-time
+   - Manages connections with automatic reconnection support
+   - Runs independently from the Next.js application
+
+4. **Agent Manager** - Registry for specialized agents (`src/server/agents/AgentManager.ts`)
+   - Creates and configures domain-specific agents
+   - Maintains registry of available agents
+   - Routes events between agents and external systems
+   - Controls agent lifecycle (start, stop, restart)
+
+### Agent Implementations
+
+Each specialized agent inherits from the base agent class and adds domain-specific functionality:
+
+#### Sales Agent (`src/server/agents/SalesAgent.ts`)
+
+**Purpose**: Automates sales processes including lead generation, qualification, pipeline management, and reporting.
+
+**Key Functions**:
+- `start()` / `stop()` - Manage monitoring processes for pipeline and tasks
+- `monitorPipeline()` - Analyzes deal progress and calculates key metrics
+- `processTask()` - Handles regular sales activities like lead qualification
+- `simulatePipelineUpdate()` - Generates synthetic deal data for development
+- `updatePipelineMetrics()` - Calculates metrics like pipeline value and win rate
+- `updateMetrics()` - Tracks qualified leads and meetings scheduled
+- `fetchNewLeads()` - Retrieves leads from external systems or simulates lead data
+- `qualifyLeads()` - Scores and filters leads based on qualification criteria
+- `conductOutreach()` - Manages personalized communication with leads
+- `scheduleMeetingWithLead()` - Coordinates calendar availability
+- `createDealFromLead()` - Converts qualified leads into deals
+- `progressDealToProposal()` - Advances deals through stages
+- `followUpOnProposal()` - Manages deal progression activities
+- `sendEmail()` - Handles email communications with template personalization
+
+#### Marketing Agent (`src/server/agents/MarketingAgent.ts`)
+
+**Purpose**: Automates marketing activities including campaign management, content creation, and audience engagement tracking.
+
+**Key Functions**:
+- `start()` / `stop()` - Manage intervals for campaign monitoring and tasks
+- `monitorCampaigns()` - Tracks performance metrics across channels
+- `simulateCampaignActivity()` - Generates channel performance data
+- `updateCampaignMetrics()` - Calculates ROI, reach, and conversion metrics
+- `processTask()` - Handles content creation and marketing optimization
+- `simulateMarketingActivities()` - Models campaign creation and completion
+- `updateMetrics()` - Tracks success rates and audience engagement
+- `handleError()` - Manages failure scenarios and error recovery
+
+#### Customer Success Agent (`src/server/agents/CustomerSuccessAgent.ts`)
+
+**Purpose**: Manages customer relationships, monitors customer health, and handles support tickets.
+
+**Key Functions**:
+- `start()` / `stop()` - Manage intervals for ticket and customer monitoring
+- `processTickets()` - Simulates ticket creation and resolution
+- `simulateTicketActivity()` - Generates ticket data across priority levels
+- `updateTicketMetrics()` - Tracks resolution times and satisfaction impact
+- `processTask()` - Handles customer health monitoring
+- `simulateCustomerActivities()` - Models customer feedback and stage transitions
+- `updateMetrics()` - Updates NPS and satisfaction scores
+- `updateHealthScores()` - Calculates customer health across lifecycle stages
+
+#### Executive Agent (`src/server/agents/ExecutiveAgent.ts`)
+
+**Purpose**: Monitors business metrics, generates reports, and manages stakeholder communications.
+
+**Key Functions**:
+- `start()` / `stop()` - Manage intervals for alerts and report generation
+- `processAlerts()` - Monitors metric deviations and stakeholder alerts
+- `simulateAlertActivity()` - Models alerts across business categories
+- `updateAlertMetrics()` - Tracks which business areas need attention
+- `processTask()` - Generates reports and executive analysis
+- `simulateExecutiveActivities()` - Models report generation and accuracy
+- `updateMetrics()` - Tracks decision accuracy and report completions
+
+#### Operations Agent (`src/server/agents/OperationsAgent.ts`)
+
+**Purpose**: Manages operational workflows, project milestones, and resource allocation.
+
+**Key Functions**:
+- `start()` / `stop()` - Manage intervals for project and resource monitoring
+- `monitorProjects()` - Tracks project status and identifies blockers
+- `simulateProjectActivity()` - Generates project progress and resource data
+- `updateProjectMetrics()` - Calculates efficiency and completion rates
+- `processTask()` - Handles resource allocation and scheduling
+- `simulateOperationsActivities()` - Models operational tasks and outcomes
+- `updateMetrics()` - Tracks productivity and resource utilization
+
+### Cross-Agent Communication
+
+Agents communicate through:
+
+1. **Event-Based Model**: Using EventEmitter to publish/subscribe to events
+2. **Metric Sharing**: Agents share metrics for cross-domain decision making
+3. **Task Queues**: The orchestrator routes tasks between agents
+4. **Socket.IO Events**: Real-time updates for frontend visualization
+
+### Integrations
+
+The system supports integration with external services:
+
+1. **Email Integration**: For automated outreach and notifications
+   - Gmail/SMTP support via nodemailer
+   - Template selection and personalization
+   - Activity tracking for analytics
+
+2. **Calendar Integration**: For scheduling and time management
+   - Google Calendar/Outlook support
+   - Availability checking
+   - Meeting creation and management
+
+3. **CRM Integration**: For customer and deal management
+   - Support for Salesforce, HubSpot, etc.
+   - Bidirectional data synchronization
+   - Activity recording for audit trails
+
+## Troubleshooting
+
+### Docker Issues
+
+#### Windows PowerShell Syntax Error
+```
+$env:DOCKER_BUILDKIT=1 docker-compose build --parallel
+```
+
+**Problem**: This is not valid PowerShell syntax. Environment variables must be set separately.
+
+**Solution**: Use two separate commands:
+```powershell
+$env:DOCKER_BUILDKIT=1
+docker-compose build --parallel
+```
+
+#### Container Already Running
+If you get errors about containers or ports already in use:
+
+```powershell
+# List running containers
+docker ps
+
+# Stop all containers
+docker stop $(docker ps -q)
+
+# Or stop specific container
+docker stop container_name
+```
+
+#### Docker Compose Networking Issues
+If containers can't communicate with each other:
+
+1. Check the `docker-compose.yml` network configuration
+2. Ensure containers are on the same network
+3. Use container names, not localhost, for inter-container communication
+
+### Agent Orchestration Issues
+
+If agents fail to start or communicate:
+
+1. Check log files in the `logs/` directory
+2. Verify correct event names in emitters and listeners
+3. Ensure all required configuration is provided
+4. Check for port conflicts in Socket.IO servers

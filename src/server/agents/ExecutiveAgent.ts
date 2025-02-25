@@ -116,78 +116,102 @@ export class ExecutiveAgent extends EventEmitter {
   }
 
   /**
-   * Process alerts by simulating metric changes and stakeholder interactions
+   * Process and respond to business metric alerts
+   * In a real implementation, this would connect to business intelligence 
+   * tools and notify stakeholders of significant deviations
    */
   private async processAlerts(): Promise<void> {
     try {
-      const alertUpdates = this.simulateAlertActivity();
-      this.updateAlertMetrics(alertUpdates);
+      // Simulate alert monitoring and stakeholder notifications
+      const alertData = this.simulateAlertActivity();
+      this.updateAlertMetrics(alertData);
     } catch (error) {
       this.handleError(error as Error);
     }
   }
 
   /**
-   * Simulate alert activity across different metric categories
-   * @returns Object containing simulated alerts and stakeholder engagement data
+   * Generate simulated alert data across business metrics
+   * Models different metric categories that might trigger executive attention
+   * 
+   * @returns Object containing alert counts, affected categories, and stakeholder engagement metrics
    */
   private simulateAlertActivity() {
     const baseMultiplier = Math.random();
     
-    // Simulate alerts for all metric categories
+    // Create a record of which categories have alerts
     const categories: Record<MetricCategory, boolean> = {
       revenue: Math.random() > 0.7,
       costs: Math.random() > 0.7,
-      efficiency: Math.random() > 0.7,
-      satisfaction: Math.random() > 0.7,
+      efficiency: Math.random() > 0.8,
+      satisfaction: Math.random() > 0.8,
       sales: Math.random() > 0.7,
       marketing: Math.random() > 0.7,
-      customer_success: Math.random() > 0.7,
-      operations: Math.random() > 0.7
+      customer_success: Math.random() > 0.8,
+      operations: Math.random() > 0.8
     };
     
     return {
-      alerts: Math.floor(baseMultiplier * 5),
+      // Number of alerts generated in this cycle
+      alerts: Math.floor(baseMultiplier * 3),
       categories,
-      stakeholderEngagement: Math.random() * 100
+      // Measure of how many stakeholders engaged with previous alerts
+      stakeholderEngagement: baseMultiplier * 0.7
     };
   }
 
   /**
-   * Update metrics based on alert activity
-   * @param updates - Alert activity data including triggered alerts and stakeholder engagement
+   * Update alert-related metrics based on simulated activity
+   * Tracks:
+   * - Number of alerts triggered
+   * - Which business categories are experiencing issues
+   * - Stakeholder engagement with alerts
+   * 
+   * @param updates - Alert data including counts, categories, and engagement metrics
    */
   private updateAlertMetrics(updates: {
     alerts: number;
     categories: Record<MetricCategory, boolean>;
     stakeholderEngagement: number;
   }): void {
+    // Update alert count
     this.metrics.alerts_triggered += updates.alerts;
-
+    
+    // Update stakeholder engagement with a weighted rolling average
+    this.metrics.stakeholder_engagement = 
+      (this.metrics.stakeholder_engagement * 0.8) + 
+      (updates.stakeholderEngagement * 0.2);
+    
     // Update metric trends for categories with alerts
-    Object.entries(updates.categories).forEach(([category, triggered]) => {
-      if (triggered) {
-        const trend = this.metrics.metric_trends[category as MetricCategory];
-        trend.push(Math.random() * 100);
-        if (trend.length > 10) trend.shift(); // Keep last 10 data points
+    Object.entries(updates.categories).forEach(([category, hasAlert]) => {
+      if (hasAlert && this.metrics.metric_trends[category as MetricCategory]) {
+        // Add a new data point to the trend (simplified implementation)
+        // In a real system, this would use actual metric values
+        const currentValue = Math.random() * 100;
+        this.metrics.metric_trends[category as MetricCategory].push(currentValue);
+        
+        // Keep only the last 10 data points
+        if (this.metrics.metric_trends[category as MetricCategory].length > 10) {
+          this.metrics.metric_trends[category as MetricCategory].shift();
+        }
       }
     });
 
-    // Update stakeholder engagement using rolling average
-    this.metrics.stakeholder_engagement = 
-      (this.metrics.stakeholder_engagement * 0.9) + 
-      (updates.stakeholderEngagement * 0.1);
-
+    // Emit updated metrics
     this.emitEvent('metrics_update', { metrics: this.metrics });
   }
 
   /**
-   * Process periodic tasks including report generation and analysis
+   * Process executive tasks such as report generation,
+   * data analysis, and strategic planning
+   * 
+   * Tracks execution time for performance metrics
    */
   private async processTask(): Promise<void> {
     const startTime = Date.now();
     
     try {
+      // Simulate executive reporting and analysis activities
       const activities = this.simulateExecutiveActivities();
       
       if (activities.success) {
@@ -202,8 +226,10 @@ export class ExecutiveAgent extends EventEmitter {
   }
 
   /**
-   * Simulate executive activities including report generation and analysis
-   * @returns Object containing simulated report updates and success status
+   * Generate simulated executive activity data
+   * Models report generation across different business domains
+   * 
+   * @returns Object containing report updates by type, including completion status and accuracy metrics
    */
   private simulateExecutiveActivities(): {
     success: boolean;
@@ -214,31 +240,44 @@ export class ExecutiveAgent extends EventEmitter {
       accuracy: number;
     }[];
   } {
-    const success = Math.random() > 0.05; // 95% success rate
+    // 95% success rate for executive tasks
+    const success = Math.random() > 0.05;
     
     if (success) {
-      const reportTypes: ReportType[] = ['financial', 'operational', 'strategic', 'compliance'];
+      // Generate report activity for each configured report type
+      const reportUpdates = (this.config.reportTypes || ['financial', 'operational']).map(type => {
+        return {
+          type,
+          // Most cycles complete 0-1 reports of each type
+          completed: Math.floor(Math.random() * 1.5),
+          // Most cycles generate 1-3 pending reports
+          pending: Math.floor(Math.random() * 3) + 1,
+          // Accuracy between 85% and 100%
+          accuracy: 0.85 + (Math.random() * 0.15)
+        };
+      });
+      
       return {
         success: true,
-        reportUpdates: reportTypes.map(type => ({
-          type,
-          completed: Math.floor(Math.random() * 3),
-          pending: Math.floor(Math.random() * 2),
-          accuracy: 85 + Math.random() * 15 // 85-100% accuracy
-        }))
+        reportUpdates
       };
     }
     
-    return {
+    return { 
       success: false,
       reportUpdates: []
     };
   }
 
   /**
-   * Update metrics based on completed activities
-   * @param startTime - Timestamp when the activity started
-   * @param activities - Results of executive activities including report updates
+   * Update executive metrics based on activity data
+   * Tracks:
+   * - Response time and success rate
+   * - Reports generated and pending by type
+   * - Decision accuracy trends
+   * 
+   * @param startTime - Timestamp when task processing began
+   * @param activities - Executive activity data including report updates
    */
   private updateMetrics(startTime: number, activities: {
     reportUpdates: {
@@ -248,107 +287,109 @@ export class ExecutiveAgent extends EventEmitter {
       accuracy: number;
     }[];
   }): void {
-    // Update response time using rolling average
+    // Update response time using weighted rolling average
     const responseTime = Date.now() - startTime;
     this.metrics.avg_response_time = 
       (this.metrics.avg_response_time * 0.9) + (responseTime * 0.1);
     
-    // Update success rate based on total tasks and errors
+    // Update success rate calculation
     const totalTasks = this.metrics.error_count + 
       (this.metrics.success_rate * 100);
     const successfulTasks = totalTasks - this.metrics.error_count;
     this.metrics.success_rate = (successfulTasks / (totalTasks + 1)) * 100;
 
-    // Process report updates
-    activities.reportUpdates.forEach(update => {
-      const reportMetric = this.metrics.report_metrics[update.type];
+    // Process each report type's updates
+    activities.reportUpdates.forEach(report => {
+      // Update report counts for this type
+      if (this.metrics.report_metrics[report.type]) {
+        this.metrics.report_metrics[report.type].completed += report.completed;
+        this.metrics.report_metrics[report.type].pending = report.pending;
+      }
       
-      // Update report counts
-      reportMetric.completed += update.completed;
-      reportMetric.pending = Math.max(0, 
-        reportMetric.pending + update.pending - update.completed
-      );
+      // Update overall reports generated count
+      this.metrics.reports_generated += report.completed;
       
-      this.metrics.reports_generated += update.completed;
-
-      // Update decision accuracy using rolling average
+      // Update decision accuracy using weighted rolling average
       this.metrics.decision_accuracy = 
-        (this.metrics.decision_accuracy * 0.9) + 
-        (update.accuracy * 0.1);
+        (this.metrics.decision_accuracy * 0.95) + (report.accuracy * 100 * 0.05);
     });
 
+    // Emit updated metrics
     this.emitEvent('metrics_update', { metrics: this.metrics });
   }
 
   /**
-   * Handle errors by updating error metrics and potentially changing agent status
+   * Handle errors that occur during agent operation
+   * Tracks consecutive failures and updates error metrics
+   * 
    * @param error - The error that occurred
    */
   private handleError(error: Error): void {
+    // Increment error count and consecutive failures
     this.metrics.error_count++;
     this.metrics.consecutive_failures++;
-
-    if (this.metrics.consecutive_failures >= (this.config.retryAttempts || 3)) {
-      this.setStatus('error');
+    
+    // Log the error
+    console.error(`Executive agent error: ${error.message}`);
+    
+    // If too many consecutive failures, mark the agent as failed
+    if (this.metrics.consecutive_failures >= 3) {
+      this.setStatus('failed' as AgentStatus);
     }
-
-    this.emitEvent('error', { error: error.message });
   }
 
   /**
    * Emit an event with the specified type and data
-   * @param type - Type of event to emit
-   * @param data - Data to include with the event
+   * Used for communication with the agent orchestrator
+   * 
+   * @param type - The type of event to emit
+   * @param data - The event data to include
    */
   private emitEvent(type: AgentEvent['type'], data: Partial<AgentEvent['data']>): void {
     const event: AgentEvent = {
       type,
-      agentId: this.config.id,
-      data,
-      timestamp: Date.now()
+      data
     };
-    this.emit('agent_event', event);
+    this.emit('event', event);
   }
 
-  // Public methods for external interaction
-
   /**
-   * Get current metrics
-   * @returns Copy of current metrics
+   * Get the current agent metrics
+   * @returns The current executive metrics
    */
   public getMetrics(): ExecutiveMetrics {
-    return { ...this.metrics };
+    return this.metrics;
   }
 
   /**
-   * Get current agent status
-   * @returns Current status
+   * Get the current agent status
+   * @returns The current agent status
    */
   public getStatus(): AgentStatus {
     return this.status;
   }
 
   /**
-   * Get agent ID
-   * @returns Agent ID
+   * Get the agent's unique identifier
+   * @returns The agent ID
    */
   public getId(): string {
     return this.config.id;
   }
 
   /**
-   * Get agent name
-   * @returns Agent name
+   * Get the agent's display name
+   * @returns The agent name
    */
   public getName(): string {
     return this.config.name;
   }
 
   /**
-   * Get agent configuration
-   * @returns Copy of current configuration
+   * Get the agent's configuration
+   * @returns The executive agent configuration
    */
   public getConfig(): ExecutiveConfig {
-    return { ...this.config };
+    return this.config;
   }
 } 
