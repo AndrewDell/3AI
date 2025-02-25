@@ -1,0 +1,1 @@
+export type AlertLevel = 'info' | 'warning' | 'error' | 'critical'; 

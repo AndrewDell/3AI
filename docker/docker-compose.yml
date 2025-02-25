@@ -22,7 +22,7 @@ services:
       - FLASK_PORT=5000
       - FLASK_DEBUG=False
       - LOG_LEVEL=INFO
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_API_KEY=AIzaSyDYTt1JxARqo1OP3i6Vj1VB64ulU_FRq-E
     volumes:
       # Mount only specific directories needed for development
       - ../src/ui/templates:/app/src/ui/templates

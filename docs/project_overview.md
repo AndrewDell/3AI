@@ -2785,3 +2785,135 @@ interface DeveloperPortal {
   - Development
   - Staging
   - Production
+
+### Monitoring and Observability Architecture
+
+The 3AI platform implements a comprehensive monitoring and observability system with the following key features:
+
+1. **Real-Time System Metrics**
+   - CPU, memory, disk usage, and network connection tracking
+   - Configurable thresholds for resource utilization
+   - Historical metrics storage with 1000-point rolling window
+   - Prometheus integration for metrics exposure
+
+2. **Predictive Analytics**
+   - Linear regression-based forecasting for resource usage
+   - 60-minute prediction window for CPU and memory trends
+   - Early warning system for potential resource exhaustion
+   - Trend analysis for capacity planning
+
+3. **Auto-Recovery Mechanisms**
+   - Automated response to critical system states
+   - Process-level monitoring and intervention
+   - Memory management with garbage collection triggers
+   - Disk space optimization routines
+
+4. **Health Monitoring**
+   - Real-time health status dashboard
+   - Multi-level status indicators (healthy, degraded, critical)
+   - Predictive warnings for impending issues
+   - Automated recovery task triggering
+
+5. **API Rate Limiting**
+   - Sliding window rate limiting
+   - Separate limits for metrics and admin endpoints
+   - Configurable thresholds and windows
+   - Automatic backoff for repeated violations
+
+6. **Logging and Alerting**
+   - Structured logging with contextual metadata
+   - Error tracking with stack traces
+   - Warning system for threshold breaches
+   - Integration with external notification systems
+
+### Implementation Details
+
+```python
+# Key monitoring thresholds
+THRESHOLDS = {
+    'cpu_percent': 80.0,    # Warning at 80% CPU
+    'memory_percent': 85.0,  # Warning at 85% memory
+    'disk_usage': 90.0      # Warning at 90% disk usage
+}
+
+# Rate limiting configuration
+RATE_LIMITS = {
+    'metrics': 60/minute,   # Standard metrics access
+    'admin': 600/hour      # Administrative endpoints
+}
+
+# Auto-recovery triggers
+RECOVERY_TRIGGERS = {
+    'cpu_critical': 90%,    # Immediate action needed
+    'memory_critical': 90%, # Memory recovery required
+    'disk_critical': 95%    # Disk space recovery needed
+}
+```
+
+### Monitoring Endpoints
+
+1. `/api/monitoring/metrics`
+   - Current system metrics
+   - Resource utilization
+   - Predictive analytics window
+
+2. `/api/monitoring/metrics/history`
+   - Historical metrics data
+   - Configurable time window
+   - Trend analysis
+
+3. `/api/monitoring/health`
+   - System health status
+   - Active warnings
+   - Critical alerts
+   - Recovery status
+
+// ... existing code ...
+```
+
+## Recent Updates: TypeScript and React Component Enhancements
+
+### TypeScript Configuration Improvements
+- Updated React type definitions to properly handle FC (FunctionComponent) types
+- Added explicit JSX element type declarations
+- Enhanced Recharts type definitions with proper children handling
+
+### Component Type Safety
+1. **React Component Types**
+   - Fixed FC return type to use ReactElement
+   - Added explicit type declarations for JSX IntrinsicElements
+   - Improved type safety for component props
+
+2. **Recharts Integration**
+   - Added ChartProps interface with explicit children type
+   - Enhanced type definitions for chart components
+   - Improved type safety for data visualization components
+
+3. **Type Definition Updates**
+   ```typescript
+   // Updated FC interface
+   interface FC<P = {}> {
+     (props: P): ReactElement<P>;
+     displayName?: string;
+   }
+
+   // Enhanced JSX IntrinsicElements
+   interface IntrinsicElements {
+     div: any;
+     span: any;
+     p: any;
+     h3: any;
+     [elemName: string]: any;
+   }
+
+   // Improved Recharts types
+   interface ChartProps extends CommonProps {
+     children: ReactNode;
+   }
+   ```
+
+These updates improve type safety and development experience by:
+- Ensuring proper type checking for React components
+- Providing better TypeScript support for JSX elements
+- Enhancing IDE autocompletion and error detection
+- Improving maintainability through stronger type definitions
