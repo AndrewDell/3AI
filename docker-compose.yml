@@ -1,0 +1,16 @@
+# Root docker-compose.yml
+# This file allows Docker Compose commands to be run from the project root
+
+name: 3ai
+
+# Use a single include to the original docker-compose.yml
+# This avoids conflicts with our custom configuration files
+include:
+  - ./docker/docker-compose.yml
+
+# Any custom overrides can be added here
+# Note: When using include, be careful with how you extend services
+# as direct overrides can conflict with imported resources
+
+# Networks and volumes are inherited from included files
+# but can be extended here if needed 

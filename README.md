@@ -15,6 +15,31 @@
 
 ---
 
+**System Architecture**
+
+3AI uses a three-tier architecture with containerized services:
+
+1. **Frontend (Next.js)** - Port 3000
+   - Modern React-based UI with Tremor components
+   - Connects to Socket.IO server for real-time agent updates
+   - Accessible at http://localhost:3000
+
+2. **Socket.IO Server (Node.js)** - Port 3001
+   - Handles real-time communication between agents and frontend
+   - Manages agent lifecycle and commands
+   - Provides agent metrics and status updates
+   - Accessible at http://localhost:3001
+
+3. **API (Flask)** - Port 5000
+   - Python backend for complex AI processing
+   - Handles agent business logic implementation
+   - Exposes REST endpoints for data access
+   - Accessible at http://localhost:5000
+
+All services are configured with `0.0.0.0` bindings in the Docker Compose file to ensure they're accessible from any network interface. The frontend is configured to connect to the Socket.IO server using the `NEXT_PUBLIC_SOCKET_URL` environment variable.
+
+---
+
 **Key Features**
 
 - **Multi-Agent Orchestration:**  
@@ -127,7 +152,10 @@
 
 For Linux/MacOS:
    ```bash
-   # Navigate to docker directory
+   # Option 1: Run from the project root (recommended)
+   docker-compose up --build
+   
+   # Option 2: Navigate to docker directory
    cd docker
    
    # Build with BuildKit enabled (all in one line)
@@ -139,7 +167,10 @@ For Linux/MacOS:
 
 For Windows PowerShell:
    ```powershell
-   # Navigate to docker directory
+   # Option 1: Run from the project root (recommended)
+   docker-compose up --build
+   
+   # Option 2: Navigate to docker directory
    cd docker
    
    # Set BuildKit environment variable
@@ -435,6 +466,19 @@ $env:DOCKER_BUILDKIT=1
 docker-compose build --parallel
 ```
 
+#### Docker Compose Configuration Not Found
+**Problem**: Running `docker-compose up` from the project root previously resulted in "no configuration file provided: not found" error.
+
+**Solution**: A root-level `docker-compose.yml` has been added that references the configuration in the `docker/` directory. You can now run Docker Compose commands from the project root:
+```powershell
+docker-compose up --build
+```
+
+#### Windows-Specific Package Errors
+**Problem**: The Python API container fails to start with errors about missing Windows packages (e.g., pywin32) when running in Docker.
+
+**Solution**: The Windows-specific packages have been commented out in `requirements.txt`. If you need to run the application directly on Windows (not in Docker), you may need to install these packages manually.
+
 #### Container Already Running
 If you get errors about containers or ports already in use:
 
@@ -464,3 +508,37 @@ If agents fail to start or communicate:
 2. Verify correct event names in emitters and listeners
 3. Ensure all required configuration is provided
 4. Check for port conflicts in Socket.IO servers
+
+### Socket.IO Server Networking Issues
+**Problem**: Frontend displays "Connection error: websocket error" and shows "disconnected" status.
+
+**Possible Causes & Solutions**:
+1. **Incorrect Socket.IO URL**: Ensure the dashboard component (`src/app/dashboard/page.tsx`) is connecting to the correct URL (`http://localhost:3001`).
+   
+2. **Port Binding Issues**: Verify that container ports are correctly bound to host ports in `docker-compose.yml`:
+   ```yaml
+   ports:
+     - "0.0.0.0:3001:3001"  # Format: "host:container"
+   ```
+
+3. **Environment Variables**: Check that `NEXT_PUBLIC_SOCKET_URL` is set correctly in the frontend service.
+
+4. **Network Configuration**: If running in containers, ensure all services are on the same Docker network.
+
+5. **Firewall Issues**: Check if your firewall is blocking WebSocket connections on port 3001.
+
+### Container Communication Issues
+If containers can't communicate with each other:
+
+1. **Use Service Names**: When one container needs to reach another, use the service name, not localhost:
+   - Correct: `http://api:5000`
+   - Incorrect: `http://localhost:5000`
+
+2. **Network Configuration**: Ensure all services are on the same network in `docker-compose.yml`.
+
+3. **Healthchecks**: Review healthcheck configurations to ensure services are ready before communication.
+
+4. **Restart Containers**: Sometimes a simple restart resolves transient network issues:
+   ```bash
+   docker-compose restart server frontend
+   ```

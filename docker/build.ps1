@@ -1,15 +1,20 @@
-# Enable BuildKit
+# PowerShell script for building Docker images
+# Ensures proper environment setup for Windows users
+
+Write-Host "Setting up Docker BuildKit environment..." -ForegroundColor Cyan
+
+# Set BuildKit environment variables
 $env:DOCKER_BUILDKIT=1
+$env:COMPOSE_DOCKER_CLI_BUILD=1
 
-# Pull the latest base image
-docker pull python:3.10-slim
+# Move to parent directory
+Push-Location ..
 
-# Build with optimized settings
-docker-compose build `
-    --parallel `
-    --build-arg BUILDKIT_INLINE_CACHE=1 `
-    --build-arg PIP_NO_CACHE_DIR=1 `
-    --build-arg PYTHONDONTWRITEBYTECODE=1
+# Build with parallel jobs and cache
+Write-Host "Building Docker images with optimized settings..." -ForegroundColor Green
+docker-compose -f docker/docker-compose.yml build --parallel
 
-# Tag for caching
-docker tag agentdock:latest agentdock:cache 
+# Return to original directory
+Pop-Location
+
+Write-Host "Build complete! Run 'docker-compose -f docker/docker-compose.yml up' to start services" -ForegroundColor Cyan 

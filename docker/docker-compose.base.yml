@@ -1,0 +1,61 @@
+# docker/docker-compose.base.yml
+# Common services and configuration shared between environments
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ../:/app
+      - ../logs:/app/logs
+    environment:
+      - FLASK_APP=src/ui/dashboard.py
+    networks:
+      - agent_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.node
+    volumes:
+      - ../:/app
+      - ../logs:/app/logs
+      - /app/node_modules
+    networks:
+      - agent_network
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    volumes:
+      - ../:/app
+      - ../logs:/app/logs
+      - /app/node_modules
+    networks:
+      - agent_network
+    depends_on:
+      - server
+
+networks:
+  agent_network:
+    driver: bridge
+
+volumes:
+  logs-volume:
+    driver: local 

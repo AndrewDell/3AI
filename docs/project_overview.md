@@ -224,6 +224,15 @@ Throughout the implementation timeline (0-6 months), we maintain flexibility to 
 
 Establishing a solid foundation is critical to ensuring the project remains modular, scalable, and easy to maintain. In Phase 1, we focus on setting up version control, creating a consistent development environment, and containerizing the application for seamless deployment.
 
+### Network Configuration
+
+3AI's architecture uses three primary services that communicate with each other:
+- Frontend (Next.js) accessible on port 3000
+- Socket.IO Server on port 3001 (crucial for real-time agent updates)
+- API (Flask) on port 5000
+
+All services are configured to bind to `0.0.0.0` to ensure they're accessible from any network interface. This is particularly important for the Socket.IO server, which needs to be accessible from both the client's browser and other Docker containers.
+
 ---
 
 ### 1. Version Control & Environment Management
@@ -2956,3 +2965,73 @@ We've expanded the SalesAgent's capabilities with a more detailed implementation
 - Improved error handling with circuit breaker pattern
 
 These enhancements create a solid foundation for a production-ready sales automation system that can be integrated with real CRM, email, and calendar systems.
+
+---
+
+## Technical Architecture
+
+### Node-First Docker Architecture
+
+The 3AI platform employs a modern, containerized architecture that leverages the strengths of both Node.js and Python to create a scalable, maintainable, and high-performance system. This architecture is designed to provide real-time capabilities while supporting specialized AI and ML tasks.
+
+#### Architecture Components
+
+1. **Node.js Gateway (Server Container)**
+   - Acts as the central communication hub for the entire platform
+   - Manages WebSocket connections with clients using Socket.IO
+   - Provides a REST API layer for frontend services
+   - Handles real-time event processing and distribution
+   - Proxies specialized requests to Python services when needed
+   - Built with TypeScript for type safety and maintainability
+
+2. **Python Backend (API Container)**
+   - Specializes in ML/AI processing tasks
+   - Provides endpoints for complex data analysis
+   - Handles resource-intensive operations
+   - Leverages Python's rich ecosystem of data science libraries
+
+3. **Next.js Frontend (Frontend Container)**
+   - Delivers a responsive, modern user interface
+   - Communicates with the Node.js server via WebSockets
+   - Provides a seamless user experience with server-side rendering
+   - Implements real-time visualizations of agent activities
+
+#### Communication Pattern
+
+The architecture implements a robust communication pattern:
+
+1. **Real-time Updates**
+   - WebSocket connections maintain persistent communication channels
+   - Events propagate through the system in near real-time
+   - Clients receive immediate updates when agent states change
+
+2. **Inter-Service Communication**
+   - Services communicate via HTTP APIs within the Docker network
+   - The Node.js gateway orchestrates communication between components
+   - Specialized tasks are delegated to the Python container
+
+3. **Health Monitoring**
+   - Each service exposes health check endpoints
+   - Docker uses these endpoints to monitor container health
+   - The system can automatically recover from failures
+
+#### Deployment Strategy
+
+The containerized architecture provides several deployment advantages:
+
+1. **Isolated Environments**
+   - Each component runs in its own container with defined dependencies
+   - Services can be scaled independently based on demand
+   - Development environments match production, reducing "works on my machine" issues
+
+2. **Simplified DevOps**
+   - Docker Compose orchestrates local development
+   - Services can be deployed to any container orchestration platform
+   - Infrastructure-as-code approach ensures consistency
+
+3. **Efficient Resource Utilization**
+   - Containers share underlying infrastructure efficiently
+   - Resources are allocated based on actual needs
+   - Horizontal scaling is supported for all components
+
+This architecture provides a solid foundation for the 3AI platform, enabling seamless collaboration between agents while maintaining responsiveness and reliability for users. The Docker configuration has been optimized for cross-platform compatibility, ensuring consistent builds on both Windows and Linux environments.

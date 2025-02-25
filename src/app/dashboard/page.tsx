@@ -69,7 +69,7 @@ export default function Dashboard() {
   // Initialize socket connection
   useEffect(() => {
     // Connect to the Socket.IO server
-    const socket = io('http://localhost:3100', {
+    const socket = io('http://localhost:3001', {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 5000,

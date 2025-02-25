@@ -2,6 +2,25 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { SalesAgent } from './agents/SalesAgent';
 import { AgentEvent } from '@/types/agents';
+import axios from 'axios';
+import express, { Request, Response } from 'express';
+
+/**
+ * Socket.IO Server for 3AI Platform
+ * 
+ * This module serves as the central communication hub for real-time data exchange
+ * between the agent system and frontend clients. It follows a Node-first architecture
+ * where this server acts as a gateway between the Next.js frontend and any Python
+ * backend services for specialized tasks.
+ * 
+ * Key responsibilities:
+ * - Maintain WebSocket connections with clients
+ * - Process agent events and forward to clients
+ * - Manage agent lifecycle and operations
+ * - Proxy specialized requests to Python APIs when needed
+ * 
+ * @module socketServer
+ */
 
 // Define interface for cached metrics - now capturing all metrics
 interface CachedMetrics {
@@ -16,16 +35,49 @@ interface CachedMetrics {
   [key: string]: any; // Allow other metrics properties
 }
 
-// Add cache for preserving metrics when agent is stopped
+// Connection settings for API service
+const API_URL = process.env.API_URL || 'http://localhost:5000';
+
+/**
+ * Cache for preserving metrics when agent is stopped
+ * This enables persistent metrics across agent restart cycles
+ */
 let cachedMetrics: CachedMetrics | null = null;
 
-// Add heartbeat interval to ensure clients stay connected
+/**
+ * Heartbeat interval to ensure clients stay connected
+ * Periodically sends updates to maintain connection health
+ */
 let heartbeatInterval: NodeJS.Timeout | null = null;
 
-const httpServer = createServer();
+/**
+ * Create Express app for HTTP endpoints
+ */
+const app = express();
+
+/**
+ * Add health check endpoint for Docker
+ */
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    service: '3AI-socket-server',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * Create HTTP server using Express app
+ */
+const httpServer = createServer(app);
+
+/**
+ * Initialize Socket.IO server with enhanced configuration 
+ * for improved connection stability and cross-origin support
+ */
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
+    origin: ['http://localhost:3000', 'http://frontend:3000', 'http://localhost:3001'],
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -35,6 +87,11 @@ const io = new Server(httpServer, {
   pingInterval: 10000
 });
 
+/**
+ * Initialize the SalesAgent with default configuration
+ * In production, this would load configuration from environment
+ * variables or external configuration service
+ */
 const salesAgent = new SalesAgent({
   id: 'enterprise1',
   name: 'Enterprise Sales Rep',
@@ -51,7 +108,10 @@ const salesAgent = new SalesAgent({
   }
 });
 
-// Forward agent events to all connected clients
+/**
+ * Forward agent events to all connected clients
+ * Maps internal agent events to client-facing Socket.IO events
+ */
 salesAgent.on('agent_event', (event: AgentEvent) => {
   io.emit('agent_event', event);
   console.log(`Emitted agent event: ${event.type}`);
@@ -62,7 +122,10 @@ salesAgent.on('agent_event', (event: AgentEvent) => {
   }
 });
 
-// Start heartbeat to keep clients updated
+/**
+ * Start heartbeat to keep clients updated with fresh data
+ * This ensures clients always have the most current state
+ */
 function startHeartbeat() {
   // Clear any existing interval
   if (heartbeatInterval) {
@@ -77,7 +140,10 @@ function startHeartbeat() {
   }, 5000); // Send updates every 5 seconds
 }
 
-// Function to stop heartbeat
+/**
+ * Stop heartbeat when server is shutting down
+ * Ensures clean resource management
+ */
 function stopHeartbeat() {
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval);
@@ -88,7 +154,24 @@ function stopHeartbeat() {
 // Start the heartbeat when the server starts
 startHeartbeat();
 
-// Handle client connections
+/**
+ * Helper function to communicate with Python API services
+ * Uses HTTP requests to fetch data from specialized ML/AI endpoints
+ */
+async function fetchFromPythonAPI(endpoint: string) {
+  try {
+    console.log(`Fetching data from Python API: ${endpoint}`);
+    const response = await axios.get(`${API_URL}${endpoint}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching from Python API (${endpoint}):`, error);
+    return null;
+  }
+}
+
+/**
+ * Handle client connections and establish bidirectional communication
+ */
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
@@ -105,69 +188,102 @@ io.on('connection', (socket) => {
     socket.emit('ping', { timestamp: Date.now() });
   }, 1000);
 
-  // Handle client commands
-  socket.on('command', (message: { command: string }) => {
-    console.log(`Received command: ${message.command}`);
+  /**
+   * Handle client commands and route to appropriate handlers
+   */
+  socket.on('command', async (message: { command: string, params?: any }) => {
+    console.log(`Received command: ${message.command}`, message.params || '');
     
-    switch (message.command) {
-      case 'start':
-        salesAgent.start();
-        
-        // Restore cached metrics if available
-        if (cachedMetrics !== null) {
-          setTimeout(() => {
-            const metrics = salesAgent.getMetrics();
-            // Restore ALL metrics from cache (with null check)
-            if (cachedMetrics !== null) {
-              // Copy all properties from cached metrics
-              Object.keys(cachedMetrics).forEach(key => {
-                (metrics as any)[key] = cachedMetrics![key];
-              });
-              
-              console.log(`Restored metrics from cache: Pipeline=$${cachedMetrics.pipeline_value}, Cycle=${cachedMetrics.sales_cycle_length} days`);
-              
-              // Reset the cache
-              cachedMetrics = null;
-              
-              // Emit updated metrics to all clients
-              emitMetricsUpdate();
-            }
-          }, 500); // Small delay to ensure agent is fully started
-        }
-        break;
-      case 'stop':
-        // Cache ALL metrics before stopping
-        cachedMetrics = { ...salesAgent.getMetrics() };
-        console.log(`Cached metrics: Pipeline=$${cachedMetrics.pipeline_value}, Cycle=${cachedMetrics.sales_cycle_length} days`);
-        
-        salesAgent.stop();
-        break;
-      case 'getMetrics':
-        socket.emit('metrics', {
-          type: 'metrics',
-          data: { metrics: salesAgent.getMetrics() },
-          timestamp: Date.now()
-        });
-        break;
-      // Test commands for simulating sales activities
-      case 'simulateNewLead':
-        simulateNewLead();
-        break;
-      case 'simulateMeeting':
-        simulateMeeting();
-        break;
-      case 'simulateOpportunity':
-        simulateOpportunity();
-        break;
-      case 'simulateClosedWon':
-        simulateClosedWon();
-        break;
-      case 'simulateClosedLost':
-        simulateClosedLost();
-        break;
-      case 'updatePipeline':
-        updatePipeline();
-        break;
+    try {
+      switch (message.command) {
+        case 'start':
+          salesAgent.start();
+          
+          // Restore cached metrics if available
+          if (cachedMetrics !== null) {
+            setTimeout(() => {
+              const metrics = salesAgent.getMetrics();
+              // Restore ALL metrics from cache (with null check)
+              if (cachedMetrics !== null) {
+                // Copy all properties from cached metrics
+                Object.keys(cachedMetrics).forEach(key => {
+                  (metrics as any)[key] = cachedMetrics![key];
+                });
+                
+                console.log(`Restored metrics from cache: Pipeline=$${cachedMetrics.pipeline_value}, Cycle=${cachedMetrics.sales_cycle_length} days`);
+                
+                // Reset the cache
+                cachedMetrics = null;
+                
+                // Emit updated metrics to all clients
+                emitMetricsUpdate();
+              }
+            }, 500); // Small delay to ensure agent is fully started
+          }
+          break;
+          
+        case 'stop':
+          // Cache ALL metrics before stopping
+          cachedMetrics = { ...salesAgent.getMetrics() };
+          console.log(`Cached metrics: Pipeline=$${cachedMetrics.pipeline_value}, Cycle=${cachedMetrics.sales_cycle_length} days`);
+          
+          salesAgent.stop();
+          break;
+          
+        case 'getMetrics':
+          socket.emit('metrics', {
+            type: 'metrics',
+            data: { metrics: salesAgent.getMetrics() },
+            timestamp: Date.now()
+          });
+          break;
+          
+        case 'getPythonData':
+          // Example of fetching data from Python API
+          const data = await fetchFromPythonAPI('/api/data');
+          socket.emit('pythonData', {
+            type: 'data',
+            data: data,
+            timestamp: Date.now()
+          });
+          break;
+          
+        // Test commands for simulating sales activities
+        case 'simulateNewLead':
+          simulateNewLead();
+          break;
+          
+        case 'simulateMeeting':
+          simulateMeeting();
+          break;
+          
+        case 'simulateOpportunity':
+          simulateOpportunity();
+          break;
+          
+        case 'simulateClosedWon':
+          simulateClosedWon();
+          break;
+          
+        case 'simulateClosedLost':
+          simulateClosedLost();
+          break;
+          
+        case 'updatePipeline':
+          updatePipeline();
+          break;
+          
+        default:
+          socket.emit('error', {
+            message: `Unknown command: ${message.command}`
+          });
+      }
+    } catch (error) {
+      console.error(`Error processing command ${message.command}:`, error);
+      socket.emit('error', {
+        message: `Failed to process command: ${message.command}`,
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
@@ -176,13 +292,17 @@ io.on('connection', (socket) => {
     // Client is still connected
   });
 
+  // Clean up on disconnect
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     clearInterval(pingInterval);
   });
 });
 
-// Test functions to simulate different sales activities
+/**
+ * Test function to simulate new lead generation
+ * Increments qualified leads count and updates related metrics
+ */
 function simulateNewLead() {
   const metrics = salesAgent.getMetrics();
   metrics.qualified_leads += 1;
@@ -194,6 +314,10 @@ function simulateNewLead() {
   emitMetricsUpdate();
 }
 
+/**
+ * Test function to simulate scheduling a meeting
+ * Increments meeting count and updates metrics
+ */
 function simulateMeeting() {
   const metrics = salesAgent.getMetrics();
   metrics.meetings_scheduled += 1;
@@ -202,6 +326,10 @@ function simulateMeeting() {
   emitMetricsUpdate();
 }
 
+/**
+ * Test function to simulate adding a new opportunity to pipeline
+ * Increases pipeline value and updates average deal size
+ */
 function simulateOpportunity() {
   const metrics = salesAgent.getMetrics();
   
@@ -222,6 +350,10 @@ function simulateOpportunity() {
   emitMetricsUpdate();
 }
 
+/**
+ * Test function to simulate winning a deal
+ * Updates deals closed, pipeline value, and win metrics
+ */
 function simulateClosedWon() {
   const metrics = salesAgent.getMetrics();
   
@@ -254,6 +386,10 @@ function simulateClosedWon() {
   emitMetricsUpdate();
 }
 
+/**
+ * Test function to simulate losing a deal
+ * Reduces pipeline value and updates win rate
+ */
 function simulateClosedLost() {
   const metrics = salesAgent.getMetrics();
   
@@ -275,6 +411,10 @@ function simulateClosedLost() {
   emitMetricsUpdate();
 }
 
+/**
+ * Test function to simulate changes in pipeline value
+ * Adds a random amount to current pipeline
+ */
 function updatePipeline() {
   const metrics = salesAgent.getMetrics();
   
@@ -286,6 +426,10 @@ function updatePipeline() {
   emitMetricsUpdate();
 }
 
+/**
+ * Helper function to update win and success rates
+ * Calculates realistic metrics for simulation purposes
+ */
 function updateRates() {
   const metrics = salesAgent.getMetrics();
   
@@ -296,7 +440,10 @@ function updateRates() {
   metrics.success_rate = 60 + Math.random() * 40;
 }
 
-// Enhanced emitMetricsUpdate function with better logging
+/**
+ * Emit updated metrics to all connected clients
+ * Centralizes the metrics broadcast logic
+ */
 function emitMetricsUpdate() {
   const metrics = salesAgent.getMetrics();
   // Get number of connected clients
@@ -311,14 +458,31 @@ function emitMetricsUpdate() {
   console.log(`Emitted metrics update to ${connectedClients} clients: Pipeline value = $${metrics.pipeline_value}, Sales cycle = ${metrics.sales_cycle_length} days`);
 }
 
-// Clean up intervals when server shuts down
-process.on('SIGINT', () => {
-  console.log('Server shutting down...');
-  stopHeartbeat();
-  process.exit(0);
+// Define the port for the socket server
+const PORT = process.env.PORT || 3001;
+
+// Start the server with proper error handling
+httpServer.listen(PORT, () => {
+  console.log(`Socket.IO server running at http://localhost:${PORT}`);
 });
 
-const PORT = process.env.SOCKET_PORT || 3100;
-httpServer.listen(PORT, () => {
-  console.log(`Socket.IO server running on port ${PORT}`);
-}); 
+// Handle server errors
+httpServer.on('error', (error) => {
+  console.error('Socket server error:', error);
+  process.exit(1);
+});
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('Shutting down Socket.IO server...');
+  stopHeartbeat();
+  salesAgent.stop();
+  io.close();
+  httpServer.close(() => {
+    console.log('Socket.IO server closed');
+    process.exit(0);
+  });
+});
+
+// Export for testing
+export { io, httpServer, salesAgent }; 

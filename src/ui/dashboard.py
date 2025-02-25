@@ -331,21 +331,26 @@ def get_metrics():
         logger.exception("failed_to_fetch_metrics")
         return jsonify({"error": "Failed to fetch metrics"}), 500
 
+# Add health check endpoint for Docker healthchecks
+@app.route("/api/health")
+def health_check():
+    """Simple health check endpoint for Docker and monitoring tools."""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    })
+
 # ----------------------------------------------------------------------------
 # Main Entry Point
 # ----------------------------------------------------------------------------
 if __name__ == "__main__":
-    port = int(os.getenv("FLASK_PORT", 5000))
-    debug = os.getenv("FLASK_DEBUG", "False").lower() == "true"
+    host = os.environ.get("FLASK_HOST", "0.0.0.0")
+    port = int(os.environ.get("FLASK_PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
     
-    logger.info("starting_server",
-        port=port,
-        debug=debug,
-        python_version=sys.version
-    )
+    # Initialize the agent orchestrator
+    agent_orchestrator = AgentOrchestrator()
     
-    socketio.run(app, 
-        host="0.0.0.0",
-        port=port,
-        debug=debug
-    )
+    # Start the SocketIO server
+    socketio.run(app, host=host, port=port, debug=debug)
